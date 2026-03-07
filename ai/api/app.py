@@ -128,62 +128,68 @@ def detect_anomaly():
         # Obtenir l'heure actuelle
         now = datetime.now()
         
-        # Calculer l'efficacité (EFFICIENCY = AC_POWER / IRRADIATION)
+        # Paramètres physiques adaptés à un panneau de 50W
+        PANEL_MAX_POWER_W = 50.0
+        
         irradiation = float(data['irradiation'])
         ac_power = float(data['ac_power'])
+        ambient_temp = float(data['ambient_temperature'])
         
-        if irradiation > 0:
-            efficiency = ac_power / irradiation
+        # Puissance "attendue" simple en fonction de l'irradiation (0 à 1 kW/m²)
+        if irradiation <= 0.01:
+            expected_power = 0.0
         else:
-            efficiency = 0
+            irr_clamped = max(0.0, min(irradiation, 1.0))
+            expected_power = PANEL_MAX_POWER_W * irr_clamped
         
-        # Préparer les features dans le bon ordre
-        # Ordre : AC_POWER, IRRADIATION, AMBIENT_TEMPERATURE, EFFICIENCY, HOUR
-        features = pd.DataFrame([{
-            'AC_POWER': ac_power,
-            'IRRADIATION': irradiation,
-            'AMBIENT_TEMPERATURE': float(data['ambient_temperature']),
-            'EFFICIENCY': efficiency,
-            'HOUR': now.hour
-        }])
+        # Erreur relative entre la puissance mesurée et attendue
+        if expected_power > 5.0:
+            error_ratio = abs(ac_power - expected_power) / expected_power
+        else:
+            # Quand très peu de soleil, on tolère toute petite puissance
+            error_ratio = 0.0 if ac_power <= 2.0 else 1.0
         
-        print(f"🔢 Features anomalie: {features.to_dict()}")
-        
-        # Normaliser avec le scaler
-        if anomaly_scaler is None or anomaly_model is None:
-            return jsonify({'error': 'Modèle d\'anomalie non chargé'}), 500
-        
-        features_scaled = anomaly_scaler.transform(features)
-        
-        # Détection
-        prediction = anomaly_model.predict(features_scaled)[0]
-        is_anomaly = prediction == -1
-        
-        print(f"🔍 Résultat détection: {'Anomalie' if is_anomaly else 'Normal'}")
-        
-        # Analyser le type d'anomalie
+        is_anomaly = False
         anomaly_type = None
         severity = 'normal'
         
-        if is_anomaly:
-            if ac_power < 50:
-                anomaly_type = 'Faible production'
-                severity = 'warning'
-            elif data['ambient_temperature'] > 45:
-                anomaly_type = 'Surchauffe'
-                severity = 'critical'
-            elif efficiency < 0.5 and irradiation > 100:
-                anomaly_type = 'Efficacité faible'
-                severity = 'warning'
-            else:
-                anomaly_type = 'Anomalie détectée'
-                severity = 'warning'
+        # Règles simples adaptées à un petit système 50W
+        # 1) Nuit ou quasi nuit : pas de soleil mais production non nulle
+        if irradiation < 0.05 and ac_power > 2.0:
+            is_anomaly = True
+            anomaly_type = 'Production anormale sans soleil'
+            severity = 'warning'
+        
+        # 2) Fort soleil mais production très faible ou nulle
+        elif expected_power >= 20.0 and ac_power < 5.0:
+            is_anomaly = True
+            anomaly_type = 'Production trop faible en plein soleil'
+            severity = 'warning'
+        
+        # 3) Écart important par rapport à la plage attendue
+        elif expected_power >= 10.0 and error_ratio > 0.5:
+            is_anomaly = True
+            anomaly_type = 'Écart important à la production attendue'
+            severity = 'warning'
+        
+        # 4) Température ambiante très élevée
+        if ambient_temp > 48:
+            is_anomaly = True
+            anomaly_type = 'Surchauffe ambiante'
+            severity = 'critical'
+        
+        print(
+            f"🔍 Anomalie: {is_anomaly}, "
+            f"expected={expected_power:.2f} W, ac_power={ac_power:.2f} W, "
+            f"error_ratio={error_ratio:.2f}, type={anomaly_type}"
+        )
         
         return jsonify({
             'is_anomaly': bool(is_anomaly),
             'anomaly_type': anomaly_type,
             'severity': severity,
-            'timestamp': datetime.now().isoformat()
+            'expected_power': float(expected_power),
+            'timestamp': now.isoformat()
         })
     
     except Exception as e:

@@ -1,26 +1,87 @@
 import React from 'react';
 
-function Card({ title, value, unit, icon: Icon, color = 'blue' }) {
-  const colors = {
-    blue: { text: 'text-blue-600', bg: 'bg-blue-50' },
-    green: { text: 'text-green-600', bg: 'bg-green-50' },
-    orange: { text: 'text-orange-600', bg: 'bg-orange-50' },
-    purple: { text: 'text-purple-600', bg: 'bg-purple-50' }
-  };
-  
+function Card({ title, value, unit, icon: Icon, color = '#FDB913' }) {
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6 card-hover">
-      <div className="flex items-center justify-between">
-        <div style={{flex: 1}}>
-          <p className="text-gray-500 text-sm font-medium mb-1">{title}</p>
-          <div className="flex items-baseline gap-2">
-            <p className={`text-3xl font-bold ${colors[color].text}`}>{value}</p>
-            {unit && <span className="text-gray-500">{unit}</span>}
+    <div style={{
+      backgroundColor: 'white',
+      borderRadius: '0.75rem',
+      padding: '1.5rem',
+      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+      borderTop: `4px solid ${color}`,
+      transition: 'all 0.3s ease',
+      cursor: 'default'
+    }}
+    onMouseEnter={(e) => {
+      e.currentTarget.style.transform = 'translateY(-4px)';
+      e.currentTarget.style.boxShadow = '0 10px 15px rgba(0, 0, 0, 0.15)';
+    }}
+    onMouseLeave={(e) => {
+      e.currentTarget.style.transform = 'translateY(0)';
+      e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+    }}>
+      
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '1rem'
+      }}>
+        
+        {/* Contenu texte */}
+        <div style={{ flex: 1 }}>
+          <p style={{
+            color: '#6B7280',
+            fontSize: '0.875rem',
+            fontWeight: '600',
+            marginBottom: '0.5rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em'
+          }}>
+            {title}
+          </p>
+          
+          <div style={{
+            display: 'flex',
+            alignItems: 'baseline',
+            gap: '0.5rem'
+          }}>
+            <p style={{
+              fontSize: '2.25rem',
+              fontWeight: 'bold',
+              color: color,
+              lineHeight: '1'
+            }}>
+              {value}
+            </p>
+            {unit && (
+              <span style={{
+                fontSize: '1.125rem',
+                color: '#9CA3AF',
+                fontWeight: '500'
+              }}>
+                {unit}
+              </span>
+            )}
           </div>
         </div>
+        
+        {/* Icône */}
         {Icon && (
-          <div className={`p-3 rounded-full ${colors[color].bg}`}>
-            <Icon className={`w-8 h-8 ${colors[color].text}`} style={{opacity: 0.3}} />
+          <div style={{
+            padding: '0.75rem',
+            borderRadius: '50%',
+            backgroundColor: `${color}15`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <Icon 
+              size={32} 
+              style={{ 
+                color: color,
+                strokeWidth: 2.5
+              }} 
+            />
           </div>
         )}
       </div>

@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle, RefreshCw } from 'lucide-react';
 import apiService from '../services/api';
 
 function Alerts() {
   const [alerts, setAlerts] = useState([]);
-  const [allAlerts, setAllAlerts] = useState([]);
-  const [filter, setFilter] = useState('unresolved');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -16,12 +14,8 @@ function Alerts() {
 
   const loadAlerts = async () => {
     try {
-      const [unresolved, all] = await Promise.all([
-        apiService.getAlerts(),
-        apiService.getAllAlerts(100)
-      ]);
-      if (unresolved.success) setAlerts(unresolved.data || []);
-      if (all.success) setAllAlerts(all.data || []);
+      const response = await apiService.getAlerts();
+      if (response.success) setAlerts(response.data || []);
       setLoading(false);
     } catch (error) {
       console.error('Erreur:', error);
@@ -40,110 +34,215 @@ function Alerts() {
 
   const getSeverityColor = (severity) => {
     const colors = {
-      low: 'bg-blue-100 text-blue-800',
-      medium: 'bg-yellow-100 text-yellow-800',
-      high: 'bg-orange-100 text-orange-800',
-      critical: 'bg-red-100 text-red-800'
+      low: '#10B981',
+      medium: '#FDB913',
+      high: '#F59E0B',
+      critical: '#E63946'
     };
     return colors[severity] || colors.medium;
   };
 
-  const displayed = filter === 'unresolved' ? alerts : allAlerts;
-
   if (loading) {
-    return <div className="min-h-screen bg-gray-100 flex items-center justify-center"><p>Chargement...</p></div>;
+    return (
+      <div style={{
+        minHeight: '100vh',
+        backgroundColor: '#F5F5F5',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <RefreshCw 
+            size={48} 
+            style={{ 
+              color: '#FDB913',
+              animation: 'spin 1s linear infinite',
+              margin: '0 auto 1rem'
+            }} 
+          />
+          <p style={{ fontSize: '1.25rem', color: '#6B7280' }}>Chargement des alertes...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 pb-12">
-      <div className="container py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2 flex items-center gap-3">
-            <AlertTriangle className="w-8 h-8 text-orange-600" />
-            Système d'Alertes
-          </h1>
-          <p className="text-gray-600">Monitoring en temps réel</p>
+    <div style={{ 
+      minHeight: '100vh', 
+      backgroundColor: '#F5F5F5', 
+      paddingBottom: '3rem' 
+    }}>
+      <div style={{ 
+        maxWidth: '1280px', 
+        margin: '0 auto', 
+        padding: '3rem 1.5rem' 
+      }}>
+        
+        {/* Header */}
+        <div style={{ marginBottom: '2rem' }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '1rem', 
+            marginBottom: '0.5rem' 
+          }}>
+            <AlertTriangle size={32} color="#E63946" strokeWidth={2.5} />
+            <h1 style={{
+              fontSize: '2rem',
+              fontWeight: 'bold',
+              color: '#1A3A5C',
+              margin: 0
+            }}>
+              Système d'Alertes
+            </h1>
+          </div>
+          <p style={{ color: '#6B7280', fontSize: '1rem' }}>
+            Alertes actives : <strong style={{ color: '#E63946' }}>{alerts.length}</strong>
+          </p>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-500 text-sm">Actives</p>
-                <p className="text-3xl font-bold text-red-600 mt-1">{alerts.length}</p>
-              </div>
-              <AlertTriangle className="w-10 h-10 text-red-600 opacity-20" />
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-500 text-sm">Total</p>
-                <p className="text-3xl font-bold text-gray-800 mt-1">{allAlerts.length}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-500 text-sm">Critiques</p>
-                <p className="text-3xl font-bold text-orange-600 mt-1">{allAlerts.filter(a => a.severity === 'critical').length}</p>
-              </div>
-              <XCircle className="w-10 h-10 text-orange-600 opacity-20" />
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-500 text-sm">Résolues</p>
-                <p className="text-3xl font-bold text-green-600 mt-1">{allAlerts.filter(a => a.is_resolved).length}</p>
-              </div>
-              <CheckCircle className="w-10 h-10 text-green-600 opacity-20" />
-            </div>
-          </div>
-        </div>
-
-        {/* Filtres */}
-        <div className="bg-white rounded-lg shadow-lg p-4 mb-6">
-          <div className="flex items-center gap-4">
-            <span className="text-gray-700 font-medium">Afficher :</span>
-            <button onClick={() => setFilter('unresolved')} className={`px-4 py-2 rounded-lg transition ${filter === 'unresolved' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
-              Non résolues ({alerts.length})
-            </button>
-            <button onClick={() => setFilter('all')} className={`px-4 py-2 rounded-lg transition ${filter === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
-              Toutes ({allAlerts.length})
-            </button>
-          </div>
-        </div>
-
-        {/* Liste */}
-        <div style={{display: 'grid', gap: '1rem'}}>
-          {displayed.length === 0 ? (
-            <div className="bg-white rounded-lg shadow-lg p-12 text-center">
-              <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-gray-800 mb-2">Aucune alerte</h3>
-              <p className="text-gray-600">Tout fonctionne normalement</p>
+        {/* Liste des alertes */}
+        <div style={{ display: 'grid', gap: '1rem' }}>
+          {alerts.length === 0 ? (
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '1rem',
+              padding: '4rem 2rem',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+              textAlign: 'center',
+              borderTop: '4px solid #10B981'
+            }}>
+              <CheckCircle 
+                size={64} 
+                color="#10B981" 
+                style={{ margin: '0 auto 1.5rem' }} 
+              />
+              <h3 style={{
+                fontSize: '1.5rem',
+                fontWeight: 'bold',
+                color: '#1A3A5C',
+                marginBottom: '0.5rem'
+              }}>
+                Aucune alerte active
+              </h3>
+              <p style={{ color: '#6B7280', fontSize: '1rem' }}>
+                Tous les systèmes fonctionnent normalement
+              </p>
             </div>
           ) : (
-            displayed.map((alert) => (
-              <div key={alert.id} className={`bg-white rounded-lg shadow-lg p-6 border-l-4 ${alert.severity === 'critical' ? 'border-red-500' : alert.severity === 'high' ? 'border-orange-500' : 'border-yellow-500'}`}>
-                <div className="flex items-start justify-between">
-                  <div style={{flex: 1}}>
-                    <div className="flex items-center gap-3 mb-2">
-                      <AlertTriangle className="w-5 h-5" />
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getSeverityColor(alert.severity)}`}>
-                        {alert.severity?.toUpperCase()}
+            alerts.map((alert) => (
+              <div 
+                key={alert.id}
+                style={{
+                  backgroundColor: 'white',
+                  borderRadius: '0.75rem',
+                  padding: '1.5rem',
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                  borderLeft: `6px solid ${getSeverityColor(alert.severity)}`,
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateX(4px)';
+                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.15)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateX(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+                }}
+              >
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'space-between',
+                  gap: '1rem',
+                  flexWrap: 'wrap'
+                }}>
+                  <div style={{ flex: 1, minWidth: '250px' }}>
+                    {/* En-tête alerte */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      marginBottom: '0.75rem',
+                      flexWrap: 'wrap'
+                    }}>
+                      <AlertTriangle 
+                        size={20} 
+                        color={getSeverityColor(alert.severity)} 
+                      />
+                      <span style={{
+                        padding: '0.25rem 0.75rem',
+                        borderRadius: '9999px',
+                        fontSize: '0.75rem',
+                        fontWeight: '700',
+                        backgroundColor: `${getSeverityColor(alert.severity)}20`,
+                        color: getSeverityColor(alert.severity),
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em'
+                      }}>
+                        {alert.severity}
                       </span>
-                      <span className="text-sm text-gray-500">{alert.alert_type}</span>
-                      {alert.is_resolved && <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">RÉSOLUE</span>}
+                      <span style={{
+                        fontSize: '0.875rem',
+                        color: '#6B7280',
+                        fontWeight: '500'
+                      }}>
+                        {alert.alert_type}
+                      </span>
                     </div>
-                    <p className="text-gray-800 font-medium mb-2">{alert.message}</p>
-                    <p className="text-sm text-gray-500">{new Date(alert.created_at).toLocaleString('fr-FR')}</p>
+
+                    {/* Message */}
+                    <p style={{
+                      color: '#1F2937',
+                      fontWeight: '500',
+                      fontSize: '1rem',
+                      marginBottom: '0.5rem',
+                      lineHeight: '1.5'
+                    }}>
+                      {alert.message}
+                    </p>
+
+                    {/* Date */}
+                    <p style={{
+                      fontSize: '0.875rem',
+                      color: '#9CA3AF'
+                    }}>
+                      📅 {new Date(alert.created_at).toLocaleString('fr-FR')}
+                    </p>
                   </div>
+
+                  {/* Bouton résoudre */}
                   {!alert.is_resolved && (
-                    <button onClick={() => resolve(alert.id)} className="ml-4 flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition text-sm">
-                      <CheckCircle className="w-4 h-4" />
+                    <button 
+                      onClick={() => resolve(alert.id)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        backgroundColor: '#10B981',
+                        color: 'white',
+                        padding: '0.625rem 1.25rem',
+                        borderRadius: '0.5rem',
+                        border: 'none',
+                        fontWeight: '600',
+                        fontSize: '0.875rem',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s ease',
+                        boxShadow: '0 2px 4px rgba(16, 185, 129, 0.3)',
+                        whiteSpace: 'nowrap'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#059669';
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.boxShadow = '0 4px 8px rgba(16, 185, 129, 0.4)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = '#10B981';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = '0 2px 4px rgba(16, 185, 129, 0.3)';
+                      }}
+                    >
+                      <CheckCircle size={16} />
                       Résoudre
                     </button>
                   )}
@@ -153,6 +252,19 @@ function Alerts() {
           )}
         </div>
       </div>
+
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+          h1 {
+            font-size: 1.5rem !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

@@ -1,86 +1,177 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Zap, Sun, Database, Brain, ArrowRight } from 'lucide-react';
+import { Zap, Sun, Brain, ArrowRight } from 'lucide-react';
 
 function Home() {
   const features = [
-    { icon: Sun, title: 'Énergie Solaire', description: 'Mini-centrale 50W avec monitoring temps réel' },
-    { icon: Database, title: 'Firebase Cloud', description: 'Stockage sécurisé avec synchronisation' },
-    { icon: Brain, title: 'Intelligence Artificielle', description: 'Prédiction et détection d\'anomalies' },
-    { icon: Zap, title: 'IoT & Capteurs', description: 'ESP32 avec INA219 et DS18B20' }
+    { icon: Sun, title: 'Monitoring Temps Réel', description: 'Surveillance continue de la production solaire', color: '#FDB913' },
+    { icon: Brain, title: 'Intelligence Artificielle', description: 'Prédiction et détection d\'anomalies', color: '#E63946' }
   ];
 
   return (
-    <div className="min-h-screen" style={{background: 'linear-gradient(to bottom right, #eff6ff, #e0e7ff)'}}>
-      <div className="container py-16">
+    <div style={{ 
+      minHeight: '100vh',
+      background: '#F5F5F5'
+    }}>
+      <div style={{ 
+        maxWidth: '1280px', 
+        margin: '0 auto', 
+        padding: '4rem 1.5rem' 
+      }}>
         
-        {/* Hero */}
-        <div className="text-center mb-16">
-          <div className="flex justify-center mb-6">
-            <div className="bg-blue-600 p-4 rounded-full">
-              <Zap className="w-16 h-16 text-white" />
-            </div>
+        {/* Hero Section */}
+        <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
+          {/* Logo */}
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            marginBottom: '2rem' 
+          }}>
+            <div style={{
+  backgroundColor: '#FDB913',  // Jaune au lieu du dégradé bleu
+  padding: '1.5rem',
+  borderRadius: '50%',
+  boxShadow: '0 10px 25px rgba(253, 185, 19, 0.3)'
+}}>
+  <Zap size={64} color="white" strokeWidth={3} />
+</div>
           </div>
           
-          <h1 className="text-5xl font-bold text-gray-800 mb-4">Haské Énergie</h1>
-          <p className="text-xl text-gray-600 mb-2">Mini-centrale Solaire Intelligente</p>
-          <p className="text-lg text-gray-500 max-w-2xl mx-auto mb-8">
-            Système IoT avec IA pour l'optimisation de production solaire au Niger
+          <h1 style={{
+            fontSize: '3.5rem',
+            fontWeight: 'bold',
+            color: '#1A3A5C',
+            marginBottom: '1rem',
+            letterSpacing: '-0.025em'
+          }}>
+            Haské Énergie
+          </h1>
+          
+          <p style={{
+            fontSize: '1.5rem',
+            color: '#4B5563',
+            marginBottom: '0.75rem',
+            fontWeight: '500'
+          }}>
+            Mini-centrale Solaire Intelligente
           </p>
           
-          <div className="flex gap-4 justify-center">
-            <Link to="/dashboard" className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition flex items-center gap-2">
-              Dashboard <ArrowRight className="w-5 h-5" />
-            </Link>
-            <Link to="/ai" className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-50 transition border-2 border-blue-600">
-              Voir l'IA
-            </Link>
-          </div>
+          <p style={{
+            fontSize: '1.125rem',
+            color: '#6B7280',
+            maxWidth: '700px',
+            margin: '0 auto 2.5rem',
+            lineHeight: '1.7'
+          }}>
+          </p>
+          
+          {/* Bouton principal uniquement */}
+          <Link 
+            to="/dashboard"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              backgroundColor: '#FDB913',
+              color: 'white',
+              padding: '1rem 2.5rem',
+              borderRadius: '0.75rem',
+              fontSize: '1.125rem',
+              fontWeight: '600',
+              textDecoration: 'none',
+              transition: 'all 0.3s ease',
+              boxShadow: '0 4px 6px rgba(253, 185, 19, 0.4)'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#F59E0B';
+              e.currentTarget.style.transform = 'translateY(-3px)';
+              e.currentTarget.style.boxShadow = '0 10px 20px rgba(253, 185, 19, 0.5)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#FDB913';
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 6px rgba(253, 185, 19, 0.4)';
+            }}
+          >
+            Accéder au Dashboard
+            <ArrowRight size={22} />
+          </Link>
         </div>
 
-        {/* Features */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
+        {/* Features - 2 cartes seulement */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: '1.5rem',
+          marginBottom: '3rem'
+        }}>
           {features.map((feature, index) => {
             const Icon = feature.icon;
             return (
-              <div key={index} className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition">
-                <div className="bg-blue-100 w-12 h-12 rounded-lg flex items-center justify-center mb-4">
-                  <Icon className="w-6 h-6 text-blue-600" />
+              <div 
+                key={index}
+                style={{
+                  backgroundColor: 'white',
+                  borderRadius: '1rem',
+                  padding: '2rem',
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                  borderTop: `4px solid ${feature.color}`,
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-5px)';
+                  e.currentTarget.style.boxShadow = '0 10px 20px rgba(0, 0, 0, 0.15)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+                }}
+              >
+                <div style={{
+                  width: '60px',
+                  height: '60px',
+                  borderRadius: '12px',
+                  backgroundColor: `${feature.color}20`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '1.25rem'
+                }}>
+                  <Icon size={32} style={{ color: feature.color }} strokeWidth={2.5} />
                 </div>
-                <h3 className="text-lg font-bold text-gray-800 mb-2">{feature.title}</h3>
-                <p className="text-gray-600 text-sm">{feature.description}</p>
+                <h3 style={{
+                  fontSize: '1.25rem',
+                  fontWeight: 'bold',
+                  color: '#1A3A5C',
+                  marginBottom: '0.5rem'
+                }}>
+                  {feature.title}
+                </h3>
+                <p style={{
+                  color: '#6B7280',
+                  fontSize: '0.95rem',
+                  lineHeight: '1.6'
+                }}>
+                  {feature.description}
+                </p>
               </div>
             );
           })}
         </div>
 
-        {/* Stats */}
-        <div className="bg-white rounded-lg shadow-lg p-8">
-          <h2 className="text-2xl font-bold text-center text-gray-800 mb-8">Spécifications</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="text-center">
-              <p className="text-4xl font-bold text-blue-600 mb-2">50W</p>
-              <p className="text-gray-600">Panneau Solaire</p>
-            </div>
-            <div className="text-center">
-              <p className="text-4xl font-bold text-green-600 mb-2">12V</p>
-              <p className="text-gray-600">Batterie 7Ah</p>
-            </div>
-            <div className="text-center">
-              <p className="text-4xl font-bold text-orange-600 mb-2">ESP32</p>
-              <p className="text-gray-600">Microcontrôleur</p>
-            </div>
-            <div className="text-center">
-              <p className="text-4xl font-bold text-purple-600 mb-2">2</p>
-              <p className="text-gray-600">Modèles IA</p>
-            </div>
-          </div>
-        </div>
 
-        <div className="mt-16 text-center">
-          <p className="text-gray-600">Projet réalisé par <span className="font-bold text-gray-800">@Mstate student</span></p>
-        </div>
       </div>
+
+      <style>{`
+        @media (max-width: 768px) {
+          h1 {
+            font-size: 2.5rem !important;
+          }
+          p {
+            font-size: 1rem !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
