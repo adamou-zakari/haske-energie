@@ -1,7 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const sensorsRoutes = require('./routes/sensors.routes');
-const aiRoutes = require('./routes/ai.routes');  // ✅ NOUVEAU
+const aiRoutes = require('./routes/ai.routes');
+const alertsRoutes = require('./routes/alerts.routes');   // ← AJOUT
 
 const app = express();
 
@@ -11,16 +12,18 @@ app.use(express.json());
 
 // Routes
 app.use('/api/sensors', sensorsRoutes);
-app.use('/api/ai', aiRoutes);  // ✅ NOUVELLE ROUTE IA
+app.use('/api/ai', aiRoutes);
+app.use('/api/alerts', alertsRoutes);                     // ← AJOUT
 
 // Route de test
 app.get('/', (req, res) => {
-  res.json({ 
+  res.json({
     message: 'Haské Énergie API',
     version: '2.0',
     endpoints: {
       sensors: '/api/sensors',
-      ai: '/api/ai'  // ✅ NOUVEAU
+      ai: '/api/ai',
+      alerts: '/api/alerts'
     }
   });
 });

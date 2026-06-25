@@ -3,155 +3,125 @@ import { Link } from 'react-router-dom';
 import { Zap, Sun, Brain, ArrowRight } from 'lucide-react';
 
 function Home() {
+  // L'or est réservé à l'énergie (Monitoring) ; l'IA passe en marine. Plus d'arc-en-ciel.
   const features = [
-    { icon: Sun, title: 'Monitoring Temps Réel', description: 'Surveillance continue de la production solaire', color: '#FDB913' },
-    { icon: Brain, title: 'Intelligence Artificielle', description: 'Prédiction et détection d\'anomalies', color: '#E63946' }
+    { icon: Sun, title: 'Monitoring temps réel', description: 'Surveillance continue de la production solaire', accent: '#F5B301' },
+    { icon: Brain, title: 'Intelligence artificielle', description: "Prédiction et détection d'anomalies", accent: '#0B1F3A' }
   ];
 
   return (
-    <div style={{ 
-      minHeight: '100vh',
-      background: '#F5F5F5'
-    }}>
-      <div style={{ 
-        maxWidth: '1280px', 
-        margin: '0 auto', 
-        padding: '4rem 1.5rem' 
-      }}>
-        
+    <div style={{ minHeight: '100vh', background: '#F8FAFC' }}>
+      <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '4rem 1.5rem' }}>
+
         {/* Hero Section */}
         <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
-          {/* Logo */}
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'center', 
-            marginBottom: '2rem' 
-          }}>
+          {/* Logo — INCHANGÉ (rond jaune, éclair blanc) */}
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
             <div style={{
-  backgroundColor: '#FDB913',  // Jaune au lieu du dégradé bleu
-  padding: '1.5rem',
-  borderRadius: '50%',
-  boxShadow: '0 10px 25px rgba(253, 185, 19, 0.3)'
-}}>
-  <Zap size={64} color="white" strokeWidth={3} />
-</div>
+              backgroundColor: '#FDB913',
+              padding: '1.5rem',
+              borderRadius: '50%',
+              boxShadow: '0 10px 25px rgba(253, 185, 19, 0.3)'
+            }}>
+              <Zap size={64} color="white" strokeWidth={3} />
+            </div>
           </div>
-          
+
+          {/* Titre en MARINE (avant : un mélange) — plus sérieux */}
           <h1 style={{
             fontSize: '3.5rem',
             fontWeight: 'bold',
-            color: '#1A3A5C',
+            color: '#0B1F3A',
             marginBottom: '1rem',
             letterSpacing: '-0.025em'
           }}>
             Haské Énergie
           </h1>
-          
-          <p style={{
-            fontSize: '1.5rem',
-            color: '#4B5563',
-            marginBottom: '0.75rem',
-            fontWeight: '500'
-          }}>
-            Mini-centrale Solaire Intelligente
+
+          <p style={{ fontSize: '1.4rem', color: '#475569', marginBottom: '0.75rem', fontWeight: 500 }}>
+            Mini-centrale solaire intelligente
           </p>
-          
-          <p style={{
-            fontSize: '1.125rem',
-            color: '#6B7280',
-            maxWidth: '700px',
-            margin: '0 auto 2.5rem',
-            lineHeight: '1.7'
-          }}>
+
+          <p style={{ fontSize: '1.05rem', color: '#94A3B8', maxWidth: '640px', margin: '0 auto 2.5rem', lineHeight: '1.7' }}>
+            Supervision en temps réel, prédiction de production et détection d'anomalies par intelligence artificielle.
           </p>
-          
-          {/* Bouton principal uniquement */}
-          <Link 
+
+          {/* Bouton principal — l'or est justifié ici (appel à l'action) */}
+          <Link
             to="/dashboard"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: '0.75rem',
-              backgroundColor: '#FDB913',
-              color: 'white',
-              padding: '1rem 2.5rem',
-              borderRadius: '0.75rem',
-              fontSize: '1.125rem',
-              fontWeight: '600',
+              backgroundColor: '#F5B301',
+              color: '#0B1F3A',
+              padding: '0.9rem 2.2rem',
+              borderRadius: '10px',
+              fontSize: '1.05rem',
+              fontWeight: 600,
               textDecoration: 'none',
-              transition: 'all 0.3s ease',
-              boxShadow: '0 4px 6px rgba(253, 185, 19, 0.4)'
+              transition: 'all 0.2s ease',
+              boxShadow: '0 4px 12px rgba(245, 179, 1, 0.3)'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#F59E0B';
-              e.currentTarget.style.transform = 'translateY(-3px)';
-              e.currentTarget.style.boxShadow = '0 10px 20px rgba(253, 185, 19, 0.5)';
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 8px 18px rgba(245, 179, 1, 0.4)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#FDB913';
               e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 6px rgba(253, 185, 19, 0.4)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(245, 179, 1, 0.3)';
             }}
           >
-            Accéder au Dashboard
-            <ArrowRight size={22} />
+            Accéder au dashboard
+            <ArrowRight size={20} />
           </Link>
         </div>
 
-        {/* Features - 2 cartes seulement */}
+        {/* Features - 2 cartes */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '1.5rem',
+          gap: '1.25rem',
           marginBottom: '3rem'
         }}>
           {features.map((feature, index) => {
             const Icon = feature.icon;
             return (
-              <div 
+              <div
                 key={index}
                 style={{
                   backgroundColor: 'white',
-                  borderRadius: '1rem',
-                  padding: '2rem',
-                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-                  borderTop: `4px solid ${feature.color}`,
-                  transition: 'all 0.3s ease'
+                  borderRadius: '14px',
+                  padding: '1.75rem',
+                  border: '0.5px solid #E2E8F0',
+                  boxShadow: '0 1px 2px rgba(11,31,58,0.04)',
+                  transition: 'all 0.2s ease'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-5px)';
-                  e.currentTarget.style.boxShadow = '0 10px 20px rgba(0, 0, 0, 0.15)';
+                  e.currentTarget.style.transform = 'translateY(-3px)';
+                  e.currentTarget.style.boxShadow = '0 8px 18px rgba(11,31,58,0.08)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+                  e.currentTarget.style.boxShadow = '0 1px 2px rgba(11,31,58,0.04)';
                 }}
               >
                 <div style={{
-                  width: '60px',
-                  height: '60px',
-                  borderRadius: '12px',
-                  backgroundColor: `${feature.color}20`,
+                  width: '46px',
+                  height: '46px',
+                  borderRadius: '11px',
+                  backgroundColor: index === 0 ? '#FEF6E0' : '#EEF2F7',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  marginBottom: '1.25rem'
+                  marginBottom: '1.1rem'
                 }}>
-                  <Icon size={32} style={{ color: feature.color }} strokeWidth={2.5} />
+                  <Icon size={24} style={{ color: feature.accent }} strokeWidth={2} />
                 </div>
-                <h3 style={{
-                  fontSize: '1.25rem',
-                  fontWeight: 'bold',
-                  color: '#1A3A5C',
-                  marginBottom: '0.5rem'
-                }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#0B1F3A', marginBottom: '0.4rem' }}>
                   {feature.title}
                 </h3>
-                <p style={{
-                  color: '#6B7280',
-                  fontSize: '0.95rem',
-                  lineHeight: '1.6'
-                }}>
+                <p style={{ color: '#475569', fontSize: '0.92rem', lineHeight: '1.6', margin: 0 }}>
                   {feature.description}
                 </p>
               </div>
@@ -159,17 +129,11 @@ function Home() {
           })}
         </div>
 
-
       </div>
 
       <style>{`
         @media (max-width: 768px) {
-          h1 {
-            font-size: 2.5rem !important;
-          }
-          p {
-            font-size: 1rem !important;
-          }
+          h1 { font-size: 2.5rem !important; }
         }
       `}</style>
     </div>

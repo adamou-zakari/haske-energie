@@ -1,272 +1,189 @@
-import React, { useState, useEffect } from 'react';
-import { AlertTriangle, CheckCircle, RefreshCw } from 'lucide-react';
-import apiService from '../services/api';
+// haske-frontend/src/pages/Alerts.js
+// v7 — palette pro : compteurs uniformes, gravité sémantique (critique=rouge), largeur 1280.
 
-function Alerts() {
-  const [alerts, setAlerts] = useState([]);
-  const [loading, setLoading] = useState(true);
+import React, { useEffect, useState, useCallback } from 'react';
+import api from '../services/api';
+import { RefreshCw, Bell, Battery, Thermometer, Zap, Sun, AlertTriangle, AlertOctagon, AlertCircle, CheckCircle, ChevronRight, ChevronDown } from 'lucide-react';
 
-  useEffect(() => {
-    loadAlerts();
-    const interval = setInterval(loadAlerts, 10000);
-    return () => clearInterval(interval);
-  }, []);
+const NAVY   = '#0B1F3A';
+const FAINT  = '#94A3B8';
+const MUTED  = '#475569';
+const LINE   = '#E2E8F0';
 
-  const loadAlerts = async () => {
-    try {
-      const response = await apiService.getAlerts();
-      if (response.success) setAlerts(response.data || []);
-      setLoading(false);
-    } catch (error) {
-      console.error('Erreur:', error);
-      setLoading(false);
-    }
-  };
+const SEV = {
+  critical: { bar:'#C0392B', badge:'#C0392B', badgeBg:'rgba(192,57,43,0.1)',  badgeTxt:'#8E2A20', label:'Critique' },
+  high:     { bar:'#BA7517', badge:'#BA7517', badgeBg:'rgba(186,117,23,0.1)', badgeTxt:'#854F0B', label:'Élevée'   },
+  medium:   { bar:'#94A3B8', badge:'#475569', badgeBg:'#F1F5F9',              badgeTxt:'#0B1F3A', label:'Moyenne'  },
+  low:      { bar:'#1D9E75', badge:'#1D9E75', badgeBg:'rgba(29,158,117,0.1)', badgeTxt:'#0F6E56', label:'Faible'   },
+};
 
-  const resolve = async (id) => {
-    try {
-      await apiService.resolveAlert(id);
-      loadAlerts();
-    } catch (error) {
-      console.error('Erreur:', error);
-    }
-  };
+function AlertIcon({ type, color }) {
+  const p = { size: 18, color, strokeWidth: 2 };
+  if (!type) return <AlertTriangle {...p} />;
+  if (type.startsWith('battery')) return <Battery {...p} />;
+  if (type.startsWith('temp'))    return <Thermometer {...p} />;
+  if (type.startsWith('voltage')) return <Zap {...p} />;
+  if (type.startsWith('power'))   return <Sun {...p} />;
+  return <AlertTriangle {...p} />;
+}
 
-  const getSeverityColor = (severity) => {
-    const colors = {
-      low: '#10B981',
-      medium: '#FDB913',
-      high: '#F59E0B',
-      critical: '#E63946'
-    };
-    return colors[severity] || colors.medium;
-  };
+function formatDate(ts) {
+  if (!ts) return '—';
+  const d = ts.toDate ? ts.toDate() : new Date(ts._seconds ? ts._seconds*1000 : ts);
+  return d.toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+}
 
-  if (loading) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        backgroundColor: '#F5F5F5',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <RefreshCw 
-            size={48} 
-            style={{ 
-              color: '#FDB913',
-              animation: 'spin 1s linear infinite',
-              margin: '0 auto 1rem'
-            }} 
-          />
-          <p style={{ fontSize: '1.25rem', color: '#6B7280' }}>Chargement des alertes...</p>
-        </div>
-      </div>
-    );
-  }
-
+function AlertCard({ alert, onResolve, resolving }) {
+  const s = SEV[alert.severity] || SEV.low;
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      backgroundColor: '#F5F5F5', 
-      paddingBottom: '3rem' 
-    }}>
-      <div style={{ 
-        maxWidth: '1280px', 
-        margin: '0 auto', 
-        padding: '3rem 1.5rem' 
-      }}>
-        
-        {/* Header */}
-        <div style={{ marginBottom: '2rem' }}>
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '1rem', 
-            marginBottom: '0.5rem' 
-          }}>
-            <AlertTriangle size={32} color="#E63946" strokeWidth={2.5} />
-            <h1 style={{
-              fontSize: '2rem',
-              fontWeight: 'bold',
-              color: '#1A3A5C',
-              margin: 0
-            }}>
-              Système d'Alertes
-            </h1>
-          </div>
-          <p style={{ color: '#6B7280', fontSize: '1rem' }}>
-            Alertes actives : <strong style={{ color: '#E63946' }}>{alerts.length}</strong>
-          </p>
+    <div style={{ background:'#fff', borderRadius:12, border:`0.5px solid ${LINE}`, borderLeft:`3px solid ${s.bar}`, padding:'13px 16px', marginBottom:10, display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12 }}>
+      <div style={{ flex:1 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6, flexWrap:'wrap' }}>
+          <AlertIcon type={alert.type} color={s.badge} />
+          <span style={{ background:s.badgeBg, color:s.badgeTxt, fontSize:10.5, fontWeight:600, padding:'2px 8px', borderRadius:5 }}>{s.label}</span>
+          <span style={{ fontSize:11.5, color:FAINT }}>{formatDate(alert.timestamp)}</span>
         </div>
-
-        {/* Liste des alertes */}
-        <div style={{ display: 'grid', gap: '1rem' }}>
-          {alerts.length === 0 ? (
-            <div style={{
-              backgroundColor: 'white',
-              borderRadius: '1rem',
-              padding: '4rem 2rem',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-              textAlign: 'center',
-              borderTop: '4px solid #10B981'
-            }}>
-              <CheckCircle 
-                size={64} 
-                color="#10B981" 
-                style={{ margin: '0 auto 1.5rem' }} 
-              />
-              <h3 style={{
-                fontSize: '1.5rem',
-                fontWeight: 'bold',
-                color: '#1A3A5C',
-                marginBottom: '0.5rem'
-              }}>
-                Aucune alerte active
-              </h3>
-              <p style={{ color: '#6B7280', fontSize: '1rem' }}>
-                Tous les systèmes fonctionnent normalement
-              </p>
-            </div>
-          ) : (
-            alerts.map((alert) => (
-              <div 
-                key={alert.id}
-                style={{
-                  backgroundColor: 'white',
-                  borderRadius: '0.75rem',
-                  padding: '1.5rem',
-                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-                  borderLeft: `6px solid ${getSeverityColor(alert.severity)}`,
-                  transition: 'all 0.3s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateX(4px)';
-                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.15)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateX(0)';
-                  e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
-                }}
-              >
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  justifyContent: 'space-between',
-                  gap: '1rem',
-                  flexWrap: 'wrap'
-                }}>
-                  <div style={{ flex: 1, minWidth: '250px' }}>
-                    {/* En-tête alerte */}
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.75rem',
-                      marginBottom: '0.75rem',
-                      flexWrap: 'wrap'
-                    }}>
-                      <AlertTriangle 
-                        size={20} 
-                        color={getSeverityColor(alert.severity)} 
-                      />
-                      <span style={{
-                        padding: '0.25rem 0.75rem',
-                        borderRadius: '9999px',
-                        fontSize: '0.75rem',
-                        fontWeight: '700',
-                        backgroundColor: `${getSeverityColor(alert.severity)}20`,
-                        color: getSeverityColor(alert.severity),
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em'
-                      }}>
-                        {alert.severity}
-                      </span>
-                      <span style={{
-                        fontSize: '0.875rem',
-                        color: '#6B7280',
-                        fontWeight: '500'
-                      }}>
-                        {alert.alert_type}
-                      </span>
-                    </div>
-
-                    {/* Message */}
-                    <p style={{
-                      color: '#1F2937',
-                      fontWeight: '500',
-                      fontSize: '1rem',
-                      marginBottom: '0.5rem',
-                      lineHeight: '1.5'
-                    }}>
-                      {alert.message}
-                    </p>
-
-                    {/* Date */}
-                    <p style={{
-                      fontSize: '0.875rem',
-                      color: '#9CA3AF'
-                    }}>
-                      📅 {new Date(alert.created_at).toLocaleString('fr-FR')}
-                    </p>
-                  </div>
-
-                  {/* Bouton résoudre */}
-                  {!alert.is_resolved && (
-                    <button 
-                      onClick={() => resolve(alert.id)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        backgroundColor: '#10B981',
-                        color: 'white',
-                        padding: '0.625rem 1.25rem',
-                        borderRadius: '0.5rem',
-                        border: 'none',
-                        fontWeight: '600',
-                        fontSize: '0.875rem',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s ease',
-                        boxShadow: '0 2px 4px rgba(16, 185, 129, 0.3)',
-                        whiteSpace: 'nowrap'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#059669';
-                        e.currentTarget.style.transform = 'translateY(-2px)';
-                        e.currentTarget.style.boxShadow = '0 4px 8px rgba(16, 185, 129, 0.4)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = '#10B981';
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = '0 2px 4px rgba(16, 185, 129, 0.3)';
-                      }}
-                    >
-                      <CheckCircle size={16} />
-                      Résoudre
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
+        <p style={{ margin:0, fontSize:13.5, color:NAVY, lineHeight:1.5 }}>{alert.message}</p>
       </div>
 
-      <style>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-
-        @media (max-width: 768px) {
-          h1 {
-            font-size: 1.5rem !important;
-          }
-        }
-      `}</style>
+      {!alert.resolved ? (
+        <button onClick={()=>onResolve(alert.id)} disabled={resolving===alert.id} style={{
+          flexShrink:0, display:'flex', alignItems:'center', gap:6, padding:'6px 13px', fontSize:12.5, fontWeight:500,
+          background:resolving===alert.id?'#F1F5F9':'transparent', color:resolving===alert.id?'#9ca3af':'#0F6E56',
+          border:`0.5px solid ${resolving===alert.id?LINE:'#1D9E75'}`, borderRadius:7, cursor:resolving===alert.id?'not-allowed':'pointer',
+        }}>
+          {resolving===alert.id ? '...' : <><CheckCircle size={14} /> Résoudre</>}
+        </button>
+      ) : (
+        <span style={{ display:'flex', alignItems:'center', gap:4, fontSize:11.5, color:FAINT, flexShrink:0 }}><CheckCircle size={14} /> Résolue</span>
+      )}
     </div>
   );
 }
 
-export default Alerts;
+export default function Alerts() {
+  const [activeAlerts, setActiveAlerts] = useState([]);
+  const [allAlerts,    setAllAlerts]    = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [showHistory,  setShowHistory]  = useState(false);
+  const [resolving,    setResolving]    = useState(null);
+  const [error,        setError]        = useState(null);
+  const [lastRefresh,  setLastRefresh]  = useState(null);
+
+  const fetchAlerts = useCallback(async () => {
+    try {
+      setError(null);
+      const [activeRes, allRes] = await Promise.all([api.get('/alerts'), api.get('/alerts/all')]);
+      setActiveAlerts(activeRes.data.alerts || []);
+      setAllAlerts(allRes.data.alerts || []);
+      setLastRefresh(new Date());
+    } catch { setError('Impossible de charger les alertes. Vérifiez que le serveur est démarré.'); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    fetchAlerts();
+    const interval = setInterval(fetchAlerts, 30000);
+    return () => clearInterval(interval);
+  }, [fetchAlerts]);
+
+  const handleResolve = async (id) => {
+    setResolving(id);
+    try { await api.put(`/alerts/${id}/resolve`); await fetchAlerts(); }
+    catch { alert("Erreur lors de la résolution."); }
+    finally { setResolving(null); }
+  };
+
+  const criticalCount = activeAlerts.filter(a=>a.severity==='critical').length;
+  const highCount     = activeAlerts.filter(a=>a.severity==='high').length;
+  const mediumCount   = activeAlerts.filter(a=>a.severity==='medium').length;
+
+  const activeIds = new Set(activeAlerts.map(a => a.id));
+  const pastAlerts = allAlerts.filter(a => !activeIds.has(a.id));
+
+  // Compteurs : tous neutres (marine), sauf le chiffre coloré selon la gravité
+  const counters = [
+    { label:'Alertes actives', value:activeAlerts.length, color:NAVY,      Icon:Bell },
+    { label:'Critiques',       value:criticalCount,        color:'#C0392B', Icon:AlertOctagon },
+    { label:'Élevées',         value:highCount,            color:'#BA7517', Icon:AlertTriangle },
+    { label:'Moyennes',        value:mediumCount,          color:NAVY,      Icon:AlertCircle },
+  ];
+
+  return (
+    <div style={{ fontFamily:'system-ui,sans-serif', background:'#F8FAFC', minHeight:'100vh' }}>
+
+      {/* Header */}
+      <div style={{ background:'#fff', borderBottom:`0.5px solid ${LINE}` }}>
+        <div style={{ maxWidth:1280, margin:'0 auto', padding:'22px 32px' }}>
+          <h1 style={{ fontSize:20, fontWeight:600, color:NAVY, margin:0 }}>Alertes système</h1>
+          <p style={{ color:FAINT, fontSize:13, margin:'4px 0 0' }}>
+            Monitoring en temps réel
+            {lastRefresh && <span> · Mis à jour à {lastRefresh.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' })}</span>}
+          </p>
+        </div>
+      </div>
+
+      <div style={{ maxWidth:1280, margin:'0 auto', padding:'22px 32px' }}>
+
+        {/* Compteurs uniformes */}
+        <div className="alert-counters" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:18 }}>
+          {counters.map(({label,value,color,Icon}) => (
+            <div key={label} style={{ background:'#fff', border:`0.5px solid ${LINE}`, borderRadius:12, padding:'14px 16px', textAlign:'center', boxShadow:'0 1px 2px rgba(11,31,58,0.04)' }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+                <Icon size={16} color={FAINT} strokeWidth={2} />
+                <div style={{ fontSize:24, fontWeight:500, color }}>{value}</div>
+              </div>
+              <div style={{ fontSize:11, color:MUTED, marginTop:4 }}>{label}</div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:16 }}>
+          <button onClick={fetchAlerts} style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', fontSize:13, fontWeight:500, background:'transparent', color:NAVY, border:`0.5px solid ${NAVY}`, borderRadius:8, cursor:'pointer' }}>
+            <RefreshCw size={15} /> Actualiser
+          </button>
+        </div>
+
+        {error && <div style={{ display:'flex', alignItems:'center', gap:8, background:'#FCEBEA', border:'0.5px solid #F5B0AB', borderRadius:10, padding:14, marginBottom:16, color:'#8E2A20', fontSize:13 }}><AlertTriangle size={16} /> {error}</div>}
+
+        {/* Alertes actives */}
+        <div style={{ marginBottom:16 }}>
+          <div style={{ fontSize:13, fontWeight:600, color:NAVY, marginBottom:10 }}>
+            Alertes actives ({activeAlerts.length})
+          </div>
+          {loading ? (
+            <p style={{ color:FAINT, textAlign:'center', padding:20 }}>Chargement...</p>
+          ) : activeAlerts.length === 0 ? (
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:8, background:'#fff', border:`0.5px solid ${LINE}`, borderRadius:12, padding:28, color:MUTED, fontSize:13.5 }}>
+              <CheckCircle size={26} color="#1D9E75" /> Aucune alerte active — le système fonctionne normalement.
+            </div>
+          ) : (
+            activeAlerts.map(alert => <AlertCard key={alert.id} alert={alert} onResolve={handleResolve} resolving={resolving} />)
+          )}
+        </div>
+
+        {/* Historique */}
+        <div style={{ background:'#fff', borderRadius:12, border:`0.5px solid ${LINE}`, padding:'14px 18px' }}>
+          <button onClick={()=>setShowHistory(h=>!h)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:13, fontWeight:600, color:NAVY, padding:0, display:'flex', alignItems:'center', gap:8, width:'100%' }}>
+            {showHistory ? <ChevronDown size={16} color={FAINT} /> : <ChevronRight size={16} color={FAINT} />}
+            <span>Historique des alertes passées ({pastAlerts.length})</span>
+          </button>
+          {showHistory && (
+            <div style={{ marginTop:16 }}>
+              {pastAlerts.length === 0 ? (
+                <p style={{ color:FAINT, textAlign:'center', fontSize:13 }}>Aucune alerte passée dans l'historique.</p>
+              ) : (
+                pastAlerts.map(alert => <AlertCard key={alert.id} alert={alert} onResolve={handleResolve} resolving={resolving} />)
+              )}
+            </div>
+          )}
+        </div>
+
+      </div>
+
+      <style>{`
+        @media (max-width: 700px) { .alert-counters { grid-template-columns: repeat(2, 1fr) !important; } }
+      `}</style>
+    </div>
+  );
+}

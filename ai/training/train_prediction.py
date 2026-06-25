@@ -1,293 +1,182 @@
 """
-Haské Énergie - Modèle de Prédiction de Production Solaire
+Haské Énergie - Modèle de Prédiction de Production Solaire (VERSION CORRIGÉE)
 Fichier : ai/training/train_prediction.py
 
-Ce script entraîne un modèle pour prédire AC_POWER en fonction de :
-- IRRADIATION
-- AMBIENT_TEMPERATURE
-- HOUR
-- MONTH
-- DAY_OF_WEEK
+Prédit AC_POWER à partir de : IRRADIATION, AMBIENT_TEMPERATURE, HOUR, MONTH, DAY_OF_WEEK, PLANT_ID
+
+>>> CORRECTION MÉTHODOLOGIQUE <<<
+Le R²=0,99 obtenu avec un train_test_split ALÉATOIRE est GONFLÉ car :
+  (1) les données sont temporelles (mesures toutes les 15 min) -> deux points
+      voisins sont quasi identiques ; un shuffle en met un en train, l'autre en
+      test => le modèle "reconnaît" presque les réponses (fuite temporelle).
+  (2) beaucoup de zéros de nuit (irradiation=0 -> puissance=0) faciles à prédire,
+      ce qui gonfle artificiellement le R².
+
+Ce script évalue donc HONNÊTEMENT :
+  - split chronologique (shuffle=False) : on teste sur le FUTUR, jamais vu
+  - validation croisée temporelle (TimeSeriesSplit)
+  - R² de JOUR uniquement (là où la prédiction a un vrai intérêt)
+  - et affiche aussi le R² "aléatoire" pour montrer l'écart (à discuter dans le rapport)
 """
 
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, TimeSeriesSplit, cross_val_score
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import pickle
 import os
 
 print("=" * 70)
-print("🔮 HASKÉ ÉNERGIE - MODÈLE DE PRÉDICTION AC_POWER")
+print("HASKE ENERGIE - MODELE DE PREDICTION AC_POWER (evaluation honnete)")
 print("=" * 70)
-print()
 
 # ============================================================
-# 1. CHARGEMENT DES DONNÉES NETTOYÉES
+# 1. CHARGEMENT
 # ============================================================
-
-print("📁 ÉTAPE 1 : Chargement des données nettoyées...")
-print("-" * 70)
-
-# Charger les données nettoyées
 df = pd.read_csv('../preprocessing/clean_data.csv')
+print(f"Donnees : {df.shape[0]:,} lignes, {df.shape[1]} colonnes")
 
-print(f"✅ Données chargées : {df.shape[0]:,} lignes, {df.shape[1]} colonnes")
-print(f"   Colonnes : {list(df.columns)}")
-print()
+# Remettre dans l'ordre chronologique si une colonne de date existe
+for col in ['DATE_TIME', 'datetime', 'timestamp', 'date_time']:
+    if col in df.columns:
+        df[col] = pd.to_datetime(df[col], errors='coerce')
+        df = df.sort_values(col).reset_index(drop=True)
+        print(f"Donnees triees chronologiquement sur '{col}'")
+        break
+else:
+    print("ATTENTION : pas de colonne date trouvee -> on suppose le CSV deja "
+          "dans l'ordre chronologique (sinon le split temporel n'est pas fiable).")
 
 # ============================================================
-# 2. PRÉPARATION DES FEATURES ET TARGET
+# 2. FEATURES / TARGET
 # ============================================================
-
-print("⚙️  ÉTAPE 2 : Préparation des features (variables)...")
-print("-" * 70)
-
-# Features (variables d'entrée) : ce qui influence la production
 features = ['IRRADIATION', 'AMBIENT_TEMPERATURE', 'HOUR', 'MONTH', 'DAY_OF_WEEK', 'PLANT_ID']
-
-# Target (variable à prédire) : la production d'énergie
 target = 'AC_POWER'
-
-# Créer X (features) et y (target)
 X = df[features]
 y = df[target]
+print(f"Features : {features}")
+print(f"Target   : {target}")
 
-print(f"✅ Features sélectionnées : {features}")
-print(f"✅ Target : {target}")
-print()
-print(f"📊 Forme de X : {X.shape}")
-print(f"📊 Forme de y : {y.shape}")
-print()
+model_params = dict(n_estimators=100, max_depth=20, min_samples_split=5,
+                    random_state=42, n_jobs=-1)
 
 # ============================================================
-# 3. DIVISION TRAIN / TEST
+# 3a. (POUR COMPARAISON) SPLIT ALEATOIRE -> R2 GONFLE
 # ============================================================
-
-print("✂️  ÉTAPE 3 : Division des données (Train/Test)...")
-print("-" * 70)
-
-# Diviser les données : 80% pour l'entraînement, 20% pour le test
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42
-)
-
-print(f"✅ Données d'entraînement : {X_train.shape[0]:,} lignes")
-print(f"✅ Données de test        : {X_test.shape[0]:,} lignes")
-print()
+print("\n--- (A) Split ALEATOIRE (gonfle, NON fiable pour des donnees temporelles) ---")
+Xtr_r, Xte_r, ytr_r, yte_r = train_test_split(X, y, test_size=0.2, random_state=42)
+m_r = RandomForestRegressor(**model_params).fit(Xtr_r, ytr_r)
+r2_random = r2_score(yte_r, m_r.predict(Xte_r))
+print(f"R2 (split aleatoire) : {r2_random:.4f}   <-- c'est le 0,99 trompeur")
 
 # ============================================================
-# 4. ENTRAÎNEMENT DU MODÈLE
+# 3b. SPLIT CHRONOLOGIQUE (HONNETE) : on teste sur le futur
 # ============================================================
+print("\n--- (B) Split CHRONOLOGIQUE (honnete : test sur le futur jamais vu) ---")
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
+print(f"Train : {len(X_train):,}  |  Test : {len(X_test):,}")
 
-print("🤖 ÉTAPE 4 : Entraînement du modèle Random Forest...")
-print("-" * 70)
-print("⏳ Cela peut prendre 1-2 minutes...")
-print()
-
-# Créer le modèle Random Forest Regressor
-# Random Forest = plein de petits arbres de décision qui votent ensemble
-model = RandomForestRegressor(
-    n_estimators=100,      # 100 arbres
-    max_depth=20,          # Profondeur maximale
-    min_samples_split=5,   # Minimum d'échantillons pour diviser
-    random_state=42,       # Pour reproduire les résultats
-    n_jobs=-1              # Utiliser tous les CPU disponibles
-)
-
-# Entraîner le modèle
+model = RandomForestRegressor(**model_params)
 model.fit(X_train, y_train)
-
-print("✅ Modèle entraîné avec succès !")
-print()
-
-# ============================================================
-# 5. ÉVALUATION DU MODÈLE
-# ============================================================
-
-print("📊 ÉTAPE 5 : Évaluation des performances...")
-print("-" * 70)
-
-# Faire des prédictions sur les données de test
 y_pred = model.predict(X_test)
 
-# Calculer les métriques de performance
 mae = mean_absolute_error(y_test, y_pred)
-mse = mean_squared_error(y_test, y_pred)
-rmse = np.sqrt(mse)
+rmse = np.sqrt(mean_squared_error(y_test, y_pred))
 r2 = r2_score(y_test, y_pred)
+print(f"MAE  : {mae:.2f} W")
+print(f"RMSE : {rmse:.2f} W")
+print(f"R2 (chronologique, TOUTES heures) : {r2:.4f}")
 
-print("📈 MÉTRIQUES DE PERFORMANCE :")
-print()
-print(f"   MAE (Mean Absolute Error)  : {mae:.2f} W")
-print(f"      → En moyenne, le modèle se trompe de {mae:.2f} W")
-print()
-print(f"   RMSE (Root Mean Squared Error) : {rmse:.2f} W")
-print(f"      → Erreur quadratique moyenne : {rmse:.2f} W")
-print()
-print(f"   R² Score : {r2:.4f}")
-print(f"      → Le modèle explique {r2*100:.2f}% de la variance")
-print()
-
-# Interpréter le score
-if r2 > 0.9:
-    print("   🌟 EXCELLENT ! Le modèle est très précis !")
-elif r2 > 0.7:
-    print("   ✅ BON ! Le modèle est assez précis.")
-elif r2 > 0.5:
-    print("   ⚠️  MOYEN. Le modèle peut être amélioré.")
+# ============================================================
+# 3c. R2 DE JOUR UNIQUEMENT (les zeros de nuit gonflent le R2)
+# ============================================================
+jour = X_test['IRRADIATION'] > 0.05   # seuil : il y a du soleil
+if jour.sum() > 10:
+    r2_jour = r2_score(y_test[jour], y_pred[jour])
+    mae_jour = mean_absolute_error(y_test[jour], y_pred[jour])
+    print(f"R2 (chronologique, JOUR seulement) : {r2_jour:.4f}   (MAE jour : {mae_jour:.2f} W)")
 else:
-    print("   ❌ FAIBLE. Le modèle a besoin d'améliorations.")
+    r2_jour = None
 
+# ============================================================
+# 3d. VALIDATION CROISEE TEMPORELLE (robuste)
+# ============================================================
+print("\n--- (C) Validation croisee temporelle (TimeSeriesSplit, 5 folds) ---")
+tscv = TimeSeriesSplit(n_splits=5)
+cv_scores = cross_val_score(RandomForestRegressor(**model_params), X, y,
+                            cv=tscv, scoring='r2', n_jobs=-1)
+print(f"R2 par fold : {np.round(cv_scores, 4)}")
+print(f"R2 moyen (CV temporelle) : {cv_scores.mean():.4f}  (+/- {cv_scores.std():.4f})")
+
+# ============================================================
+# 4. INTERPRETATION HONNETE
+# ============================================================
+print("\n" + "=" * 70)
+print("INTERPRETATION (a mettre dans le rapport)")
+print("=" * 70)
+print(f"  R2 split aleatoire      : {r2_random:.3f}  (gonfle - fuite temporelle)")
+print(f"  R2 split chronologique  : {r2:.3f}  (honnete, toutes heures)")
+if r2_jour is not None:
+    print(f"  R2 de jour seulement    : {r2_jour:.3f}  (performance reelle utile)")
+print(f"  R2 moyen CV temporelle  : {cv_scores.mean():.3f}  (estimation robuste)")
 print()
+print("  -> Dans le rapport, annoncer le R2 CHRONOLOGIQUE / CV, pas le 0,99 aleatoire.")
+print("  -> Mentionner que l'irradiation explique l'essentiel de la production")
+print("     (relation physique forte), et que les zeros de nuit facilitent la tache.")
 
 # ============================================================
-# 6. IMPORTANCE DES FEATURES
+# 5. IMPORTANCE DES FEATURES
 # ============================================================
-
-print("🔍 ÉTAPE 6 : Importance des variables...")
-print("-" * 70)
-
-# Obtenir l'importance de chaque feature
 feature_importance = pd.DataFrame({
-    'Feature': features,
-    'Importance': model.feature_importances_
+    'Feature': features, 'Importance': model.feature_importances_
 }).sort_values('Importance', ascending=False)
+print("\nImportance des features :")
+for _, row in feature_importance.iterrows():
+    print(f"   {row['Feature']:22s} : {row['Importance']*100:5.2f}%")
 
-print("📊 IMPORTANCE DES FEATURES :")
-print()
-for idx, row in feature_importance.iterrows():
-    print(f"   {row['Feature']:25s} : {row['Importance']:.4f} ({row['Importance']*100:.2f}%)")
-print()
-
-# Visualiser l'importance des features
 plt.figure(figsize=(10, 6))
 sns.barplot(data=feature_importance, x='Importance', y='Feature', palette='viridis')
-plt.title('Importance des Variables - Prédiction AC_POWER', fontsize=14, fontweight='bold')
-plt.xlabel('Importance', fontsize=12)
-plt.ylabel('Variable', fontsize=12)
+plt.title('Importance des Variables - Prediction AC_POWER')
 plt.tight_layout()
+os.makedirs('../schemas', exist_ok=True)
 plt.savefig('../schemas/feature_importance.png', dpi=300, bbox_inches='tight')
-print("✅ Graphique d'importance sauvegardé : ai/schemas/feature_importance.png")
-print()
 
 # ============================================================
-# 7. VISUALISATION DES PRÉDICTIONS
+# 6. GRAPHIQUES PREDICTIONS (sur le test chronologique)
 # ============================================================
-
-print("📊 ÉTAPE 7 : Visualisation des prédictions...")
-print("-" * 70)
-
-# Créer un graphique de comparaison
 fig, axes = plt.subplots(1, 2, figsize=(16, 6))
-
-# Graphique 1 : Prédictions vs Valeurs réelles (scatter plot)
 axes[0].scatter(y_test, y_pred, alpha=0.3, s=10, color='blue')
-axes[0].plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 
-             'r--', lw=2, label='Prédiction parfaite')
-axes[0].set_xlabel('Valeurs Réelles (W)', fontsize=12)
-axes[0].set_ylabel('Valeurs Prédites (W)', fontsize=12)
-axes[0].set_title('Prédictions vs Réalité', fontsize=14, fontweight='bold')
-axes[0].legend()
-axes[0].grid(True, alpha=0.3)
-
-# Graphique 2 : Distribution des erreurs
+axes[0].plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--', lw=2, label='Prediction parfaite')
+axes[0].set_xlabel('Valeurs Reelles (W)'); axes[0].set_ylabel('Valeurs Predites (W)')
+axes[0].set_title('Predictions vs Realite (test chronologique)'); axes[0].legend(); axes[0].grid(True, alpha=0.3)
 errors = y_test - y_pred
 axes[1].hist(errors, bins=50, color='green', alpha=0.7, edgecolor='black')
-axes[1].set_xlabel('Erreur de Prédiction (W)', fontsize=12)
-axes[1].set_ylabel('Fréquence', fontsize=12)
-axes[1].set_title('Distribution des Erreurs', fontsize=14, fontweight='bold')
-axes[1].axvline(x=0, color='red', linestyle='--', linewidth=2, label='Erreur = 0')
-axes[1].legend()
-axes[1].grid(True, alpha=0.3, axis='y')
-
+axes[1].set_xlabel('Erreur (W)'); axes[1].set_ylabel('Frequence'); axes[1].set_title('Distribution des Erreurs')
+axes[1].axvline(x=0, color='red', linestyle='--', lw=2); axes[1].grid(True, alpha=0.3, axis='y')
 plt.tight_layout()
 plt.savefig('../schemas/prediction_results.png', dpi=300, bbox_inches='tight')
-print("✅ Graphique des prédictions sauvegardé : ai/schemas/prediction_results.png")
-print()
 
 # ============================================================
-# 8. SAUVEGARDE DU MODÈLE
+# 7. SAUVEGARDE (modele entraine sur le split chronologique)
 # ============================================================
-
-print("💾 ÉTAPE 8 : Sauvegarde du modèle...")
-print("-" * 70)
-
-# Créer le dossier models s'il n'existe pas
 os.makedirs('../models', exist_ok=True)
-
-# Sauvegarder le modèle avec pickle
-model_file = '../models/prediction_model.pkl'
-with open(model_file, 'wb') as f:
+with open('../models/prediction_model.pkl', 'wb') as f:
     pickle.dump(model, f)
-
-print(f"✅ Modèle sauvegardé : {model_file}")
-print(f"   Taille : {os.path.getsize(model_file) / (1024*1024):.2f} MB")
-print()
-
-# Sauvegarder aussi les informations du modèle
 model_info = {
-    'features': features,
-    'target': target,
-    'mae': mae,
-    'rmse': rmse,
-    'r2_score': r2,
-    'n_samples_train': len(X_train),
-    'n_samples_test': len(X_test)
+    'features': features, 'target': target,
+    'mae': mae, 'rmse': rmse,
+    'r2_random_split': r2_random,
+    'r2_time_split': r2,
+    'r2_daytime': r2_jour,
+    'r2_cv_mean': float(cv_scores.mean()),
+    'n_samples_train': len(X_train), 'n_samples_test': len(X_test),
 }
-
-info_file = '../models/prediction_model_info.pkl'
-with open(info_file, 'wb') as f:
+with open('../models/prediction_model_info.pkl', 'wb') as f:
     pickle.dump(model_info, f)
-
-print(f"✅ Informations sauvegardées : {info_file}")
-print()
-
-# ============================================================
-# 9. TEST RAPIDE DU MODÈLE
-# ============================================================
-
-print("🧪 ÉTAPE 9 : Test rapide du modèle...")
-print("-" * 70)
-
-# Créer un exemple de prédiction
-exemple = pd.DataFrame({
-    'IRRADIATION': [800.0],
-    'AMBIENT_TEMPERATURE': [30.0],
-    'HOUR': [12],
-    'MONTH': [6],
-    'DAY_OF_WEEK': [2],
-    'PLANT_ID': [1]
-})
-
-prediction = model.predict(exemple)[0]
-
-print("📝 EXEMPLE DE PRÉDICTION :")
-print()
-print(f"   Irradiation         : {exemple['IRRADIATION'].values[0]:.2f} W/m²")
-print(f"   Température         : {exemple['AMBIENT_TEMPERATURE'].values[0]:.2f} °C")
-print(f"   Heure               : {exemple['HOUR'].values[0]:02d}:00")
-print(f"   Mois                : {exemple['MONTH'].values[0]}")
-print(f"   Jour de la semaine  : {exemple['DAY_OF_WEEK'].values[0]}")
-print()
-print(f"   ⚡ PRODUCTION PRÉDITE : {prediction:.2f} W")
-print()
-
-# ============================================================
-# 10. RÉSUMÉ FINAL
-# ============================================================
-
+print(f"\nModele + infos sauvegardes dans ../models/")
 print("=" * 70)
-print("✅ MODÈLE DE PRÉDICTION ENTRAÎNÉ AVEC SUCCÈS !")
+print("TERMINE")
 print("=" * 70)
-print()
-print("📊 RÉSUMÉ :")
-print(f"   - Précision (R²)     : {r2*100:.2f}%")
-print(f"   - Erreur moyenne     : {mae:.2f} W")
-print(f"   - Modèle sauvegardé  : {model_file}")
-print()
-print("🎯 Prochaine étape : Modèle de détection d'anomalies")
-print()
