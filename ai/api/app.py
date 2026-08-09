@@ -41,6 +41,11 @@ MAX_POWER_PANNEAU  = 50.0
 MAX_POWER_TRAINING = 1000.0
 CALIBRATION_RATIO  = MAX_POWER_PANNEAU / MAX_POWER_TRAINING  # 0.05
 
+# PLANT_ID attendu par le modele : il a ete entraine avec PLANT_ID = 1 ou 2
+# (Plant_1 et Plant_2 du jeu de donnees). Toute autre valeur sort du domaine
+# d'apprentissage et fausse le parcours des arbres.
+PLANT_ID_REF = 1
+
 
 @app.route('/health', methods=['GET'])
 def health():
@@ -139,7 +144,7 @@ def predict_power():
             'HOUR':        now.hour,
             'MONTH':       now.month,
             'DAY_OF_WEEK': now.weekday(),
-            'PLANT_ID':    4136001
+            'PLANT_ID':    PLANT_ID_REF
         }])
 
         if prediction_model is None:
@@ -272,7 +277,7 @@ def predict_batch():
             'HOUR':        now.hour,
             'MONTH':       now.month,
             'DAY_OF_WEEK': now.weekday(),
-            'PLANT_ID':    4136001
+            'PLANT_ID':    PLANT_ID_REF
         } for item in data_list])
 
         if prediction_model is None:

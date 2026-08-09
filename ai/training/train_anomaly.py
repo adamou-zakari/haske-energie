@@ -43,40 +43,34 @@ print()
 print("🏷️  ÉTAPE 2 : Création des labels d'anomalies...")
 print("-" * 70)
 
-# Nous allons créer des labels basés sur des règles métier
-# Une anomalie = une situation anormale
+# Vérité terrain par règles métier CONTEXTUELLES.
+#
+# ATTENTION — piège d'unités : dans ce jeu de données, IRRADIATION est exprimée
+# en kW/m² et plafonne autour de 0,95. Des seuils écrits en W/m² (> 500, > 100)
+# ne se déclenchent JAMAIS : aucune ligne n'est étiquetée, et précision, rappel
+# et F1 valent alors zéro. Les règles ci-dessous raisonnent donc en quantiles,
+# et sont identiques à celles de models/evaluate_anomaly.py — les deux scripts
+# doivent produire les mêmes chiffres.
 
-def detect_anomalies(row):
-    """
-    Fonction pour détecter les anomalies basée sur des règles
-    Retourne 1 si anomalie, 0 si normal
-    """
-    anomaly = 0
-    
-    # Règle 1 : Production trop faible avec forte irradiation
-    # Si irradiation > 500 W/m² mais AC_POWER < 1000 W → problème
-    if row['IRRADIATION'] > 500 and row['AC_POWER'] < 1000:
-        anomaly = 1
-    
-    # Règle 2 : Température trop élevée
-    # Si température > 45°C → surchauffe possible
-    if row['AMBIENT_TEMPERATURE'] > 45:
-        anomaly = 1
-    
-    # Règle 3 : Efficacité très faible
-    # Si efficacité < 0.5 → problème de conversion
-    if row['EFFICIENCY'] < 0.5 and row['IRRADIATION'] > 100:
-        anomaly = 1
-    
-    # Règle 4 : Production en pleine nuit (impossible)
-    # Si heure entre 22h et 5h et AC_POWER > 100 W → anomalie
-    if (row['HOUR'] >= 22 or row['HOUR'] <= 5) and row['AC_POWER'] > 100:
-        anomaly = 1
-    
-    return anomaly
+jour_fort = df['IRRADIATION'] > 0.4     # plein soleil : production attendue élevée
+nuit      = df['IRRADIATION'] < 0.05    # nuit : production attendue nulle
 
-# Appliquer la détection
-df['ANOMALY'] = df.apply(detect_anomalies, axis=1)
+prod_fort = df.loc[jour_fort, 'AC_POWER']
+eff_fort  = df.loc[jour_fort, 'EFFICIENCY']
+
+# Règle 1 : sous-production malgré un fort ensoleillement
+faible_prod = jour_fort & (df['AC_POWER'] < prod_fort.quantile(0.10))
+# Règle 2 : rendement dégradé en plein soleil
+eff_basse   = jour_fort & (df['EFFICIENCY'] < eff_fort.quantile(0.10))
+# Règle 3 : production nocturne réelle (pas du bruit de mesure)
+nocturne    = nuit & (df['AC_POWER'] > 5)
+# Règle 4 : surchauffe = centile 99 des températures observées
+surchauffe  = df['AMBIENT_TEMPERATURE'] > df['AMBIENT_TEMPERATURE'].quantile(0.99)
+
+df['ANOMALY'] = (faible_prod | eff_basse | nocturne | surchauffe).astype(int)
+
+print(f"   faible_prod={int(faible_prod.sum()):,} | eff_basse={int(eff_basse.sum()):,} "
+      f"| nocturne={int(nocturne.sum()):,} | surchauffe={int(surchauffe.sum()):,}")
 
 # Compter les anomalies
 n_anomalies = df['ANOMALY'].sum()
@@ -332,11 +326,15 @@ print("🧪 ÉTAPE 10 : Test rapide du modèle...")
 print("-" * 70)
 
 # Exemple 1 : Situation NORMALE
+# ATTENTION aux unites : dans ce jeu de donnees IRRADIATION est en kW/m2
+# (elle plafonne vers 0,95) et EFFICIENCY = AC_POWER / IRRADIATION vaut donc
+# environ 1200 a 1500 en plein soleil. Ecrire 800 W/m2 ici produirait un point
+# mille fois hors echelle, que le modele signalerait a juste titre.
 exemple_normal = pd.DataFrame({
-    'AC_POWER': [5000.0],
-    'IRRADIATION': [800.0],
-    'AMBIENT_TEMPERATURE': [30.0],
-    'EFFICIENCY': [6.25],
+    'AC_POWER': [1150.0],
+    'IRRADIATION': [0.80],
+    'AMBIENT_TEMPERATURE': [31.0],
+    'EFFICIENCY': [1150.0 / 0.80],
     'HOUR': [12]
 })
 
@@ -346,17 +344,17 @@ result_normal = "🚨 ANOMALIE" if pred_normal == -1 else "✅ NORMAL"
 
 print("📝 EXEMPLE 1 - Situation normale :")
 print(f"   AC_POWER : {exemple_normal['AC_POWER'].values[0]:.0f} W")
-print(f"   IRRADIATION : {exemple_normal['IRRADIATION'].values[0]:.0f} W/m²")
+print(f"   IRRADIATION : {exemple_normal['IRRADIATION'].values[0]:.2f} kW/m²")
 print(f"   TEMPÉRATURE : {exemple_normal['AMBIENT_TEMPERATURE'].values[0]:.0f} °C")
 print(f"   → Résultat : {result_normal}")
 print()
 
 # Exemple 2 : Situation ANORMALE
 exemple_anomalie = pd.DataFrame({
-    'AC_POWER': [500.0],      # Production très faible
-    'IRRADIATION': [800.0],   # Mais irradiation forte
-    'AMBIENT_TEMPERATURE': [50.0],  # Surchauffe !
-    'EFFICIENCY': [0.6],
+    'AC_POWER': [120.0],      # Production tres faible
+    'IRRADIATION': [0.80],    # Alors que l'ensoleillement est fort
+    'AMBIENT_TEMPERATURE': [40.0],  # Et temperature elevee
+    'EFFICIENCY': [120.0 / 0.80],   # Rendement effondre (~150 au lieu de ~1400)
     'HOUR': [12]
 })
 
@@ -365,8 +363,8 @@ pred_anomalie = model.predict(exemple_anomalie_scaled)[0]
 result_anomalie = "🚨 ANOMALIE" if pred_anomalie == -1 else "✅ NORMAL"
 
 print("📝 EXEMPLE 2 - Situation anormale :")
-print(f"   AC_POWER : {exemple_anomalie['AC_POWER'].values[0]:.0f} W (TRÈS FAIBLE !)")
-print(f"   IRRADIATION : {exemple_anomalie['IRRADIATION'].values[0]:.0f} W/m²")
+print(f"   AC_POWER : {exemple_anomalie['AC_POWER'].values[0]:.0f} W (TRÈS FAIBLE pour cet ensoleillement !)")
+print(f"   IRRADIATION : {exemple_anomalie['IRRADIATION'].values[0]:.2f} kW/m²")
 print(f"   TEMPÉRATURE : {exemple_anomalie['AMBIENT_TEMPERATURE'].values[0]:.0f} °C (SURCHAUFFE !)")
 print(f"   → Résultat : {result_anomalie}")
 print()

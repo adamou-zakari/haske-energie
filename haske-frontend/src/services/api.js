@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000/api';
+// Adresse du backend Node. Surchargeable par un .env (non versionne) :
+//   REACT_APP_API_URL=http://192.168.1.231:5000/api
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -23,7 +25,7 @@ api.interceptors.response.use(
 );
 
 /**
- * Routes capteurs / alertes (voir haske-backend-firebase/src/routes/sensors.routes.js)
+ * Routes capteurs (voir haske-backend-firebase/src/routes/sensors.routes.js)
  * Préfixe Express : app.use('/api/sensors', sensorsRoutes)
  */
 api.getLatestData = async (limit = 10) => {
@@ -40,13 +42,20 @@ api.getHistoricalData = async (hours = 24) => {
   return data;
 };
 
+// Les alertes passent par /api/alerts (routes/alerts.routes.js), comme les
+// pages Alerts et Navbar. L'ancien prefixe /api/sensors/alerts est supprime.
 api.getAlerts = async () => {
-  const { data } = await api.get('/sensors/alerts');
+  const { data } = await api.get('/alerts');
+  return data;
+};
+
+api.getAllAlerts = async () => {
+  const { data } = await api.get('/alerts/all');
   return data;
 };
 
 api.resolveAlert = async (id) => {
-  const { data } = await api.put(`/sensors/alerts/${id}/resolve`);
+  const { data } = await api.put(`/alerts/${id}/resolve`);
   return data;
 };
 

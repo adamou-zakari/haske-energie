@@ -120,9 +120,11 @@ function Dashboard() {
     : battLevel >= 50 ? 'Bonne'
     : battLevel >= 20 ? 'Faible'
     : 'Critique';
+  // Seuils alignes sur le backend (sensors.controller.js) et sur l'API Flask :
+  // alerte a 50 degres, critique a 65 degres.
   const tempStatus = latestData.temperature == null ? undefined
-    : latestData.temperature > 50 ? 'danger'
-    : latestData.temperature > 45 ? 'warning'
+    : latestData.temperature > 65 ? 'danger'
+    : latestData.temperature > 50 ? 'warning'
     : 'normal';
 
   const dim = isStale ? 0.5 : 1;
@@ -157,7 +159,7 @@ function Dashboard() {
           <Card      title="Ensoleillement"  value={latestData.irradiation != null ? (latestData.irradiation * 100).toFixed(0) : '—'} unit="%" icon={Sun} />
           <Card      title="Tension"         value={latestData.voltage != null ? latestData.voltage.toFixed(2) : '—'}    unit="V"  icon={Activity} />
           <Card      title="Courant"         value={latestData.current != null ? latestData.current.toFixed(2) : '—'}    unit="A"  icon={Gauge} />
-          <Card      title="Température"      value={latestData.temperature != null ? latestData.temperature.toFixed(1) : '—'} unit="°C" icon={Thermometer} status={tempStatus} />
+          <Card      title="Température boîtier" value={latestData.temperature != null ? latestData.temperature.toFixed(1) : '—'} unit="°C" icon={Thermometer} status={tempStatus} />
           <Card      title="Batterie"        value={battLevel != null ? battLevel.toFixed(0) : '—'}                       unit="%"  icon={Battery} />
         </div>
 

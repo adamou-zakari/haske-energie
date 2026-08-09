@@ -11,8 +11,8 @@ router.get('/history',       controller.getHistoricalData);
 router.get('/stats',         controller.getStats);
 
 // ── ALERTES ───────────────────────────────────
-router.get('/alerts',           controller.getAlerts);
-router.get('/alerts/all',       controller.getAllAlerts);
-router.put('/alerts/:id/resolve', controller.resolveAlert);
+// Volontairement absentes ici : elles sont exposees une seule fois, dans
+// routes/alerts.routes.js, monte sur /api/alerts. Les avoir en double sous
+// /api/sensors/alerts creait deux chemins vers les memes fonctions.
 
 module.exports = router;

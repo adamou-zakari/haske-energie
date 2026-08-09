@@ -1,5 +1,5 @@
 // haske-frontend/src/pages/AI.js
-// v10 — palette pro, largeur 1280, doublon capteurs retiré, états sobres. Logique préservée.
+// v11 — métriques contextualisées (8,1 % relatif, R² journée, échelle du modèle) + palette pro, largeur 1280. Logique préservée.
 
 import React, { useState, useEffect, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -227,7 +227,7 @@ const AI = () => {
             <div>
               <div style={{ fontSize: 11.5, color: MUTED, marginBottom: 6 }}>Production solaire estimée</div>
               <div style={{ height: 8, background: '#F1F5F9', borderRadius: 4, overflow: 'hidden' }}>
-                <div style={{ width: `${prediction ? Math.min(100, (Number(prediction.predicted_power || 0) / 50) * 100) : 0}%`, height: '100%', background: NAVY }} />
+                <div style={{ width: `${prediction ? Math.min(100, (Number(prediction.predicted_power || 0) / 1331) * 100) : 0}%`, height: '100%', background: NAVY }} />
               </div>
               <div style={{ fontSize: 18, fontWeight: 500, color: NAVY, marginTop: 6 }}>
                 {prediction != null ? `${Number(prediction.predicted_power || 0).toFixed(2)}` : '—'} <span style={{ fontSize: 11, color: FAINT }}>W</span>
@@ -235,9 +235,13 @@ const AI = () => {
             </div>
           </div>
           <div style={{ marginTop: 14, paddingTop: 12, borderTop: `0.5px solid ${LINE}`, display: 'flex', gap: 18, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 11.5, color: MUTED }}>Confiance du modèle · <strong style={{ color: NAVY }}>Élevée</strong> <span style={{ color: FAINT }}>(R² 0.83)</span></span>
-            <span style={{ fontSize: 11.5, color: MUTED }}>Erreur moyenne · <strong style={{ color: NAVY }}>39 W</strong></span>
+            <span style={{ fontSize: 11.5, color: MUTED }}>Confiance du modèle · <strong style={{ color: NAVY }}>Élevée</strong> <span style={{ color: FAINT }}>(R² 0,83 · 0,69 en journée)</span></span>
+            <span style={{ fontSize: 11.5, color: MUTED }}>Erreur moyenne · <strong style={{ color: NAVY }}>39 W</strong> <span style={{ color: FAINT }}>(8,1 % en production)</span></span>
           </div>
+          <p style={{ fontSize: 11, color: FAINT, marginTop: 10, marginBottom: 0, lineHeight: 1.5 }}>
+            Modèle entraîné à l'échelle d'une installation photovoltaïque complète (136 293 observations).
+            Les métriques d'erreur s'interprètent à cette échelle, non à celle du prototype de démonstration.
+          </p>
         </div>
 
         {/* PRÉVISION météo (Open-Meteo) — ton joyau, mis en avant */}

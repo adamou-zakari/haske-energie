@@ -1,5 +1,5 @@
 // haske-frontend/src/pages/History.jsx
-// v13 — filtrage anti-pic (ignore les valeurs aberrantes d'avant calibration) + largeur 1280 + palette pro.
+// v14 — libellés température explicites ("boîtier") + filtrage anti-pic + largeur 1280 + palette pro.
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -46,7 +46,7 @@ function computeStats(data) {
 
 function exportCSV(data, suffix) {
   if (!data || data.length === 0) return;
-  const headers = ['Heure','Tension (V)','Courant (A)','Puissance (W)','Température (°C)','Batterie (%)'];
+  const headers = ['Heure','Tension (V)','Courant (A)','Puissance (W)','Température boîtier (°C)','Batterie (%)'];
   const rows = data.map(d => [d.time, d.voltage??0, d.current??0, d.power??0, d.temperature??0, d.battery_level??0]);
   const csv = [headers,...rows].map(r => r.join(';')).join('\n');
   const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
@@ -267,7 +267,7 @@ export default function History() {
             <Card      title="Ensoleillement moy." value={stats.irradiation!=null?(stats.irradiation*100).toFixed(0):'—'} unit="%" icon={Sun} />
             <Card      title="Tension moy."         value={stats.voltage!=null?stats.voltage.toFixed(2):'—'}          unit="V"  icon={Activity} />
             <Card      title="Courant moy."         value={stats.current!=null?stats.current.toFixed(2):'—'}          unit="A"  icon={Gauge} />
-            <Card      title="Température moy."      value={stats.temperature!=null?stats.temperature.toFixed(1):'—'}  unit="°C" icon={Thermometer} />
+            <Card      title="Temp. boîtier moy."   value={stats.temperature!=null?stats.temperature.toFixed(1):'—'}  unit="°C" icon={Thermometer} />
             <Card      title="Batterie moy."        value={stats.battery_level!=null?stats.battery_level.toFixed(0):'—'} unit="%" icon={Battery} />
           </div>
         )}
@@ -286,11 +286,11 @@ export default function History() {
           </div>
         ) : (
           <>
-            <SensorChart data={rawData} dataKey="power"         label="Puissance produite" color={OR}    unit="W"  icon={Zap} />
-            <SensorChart data={rawData} dataKey="battery_level" label="Niveau batterie"    color={NAVY}  unit="%"  domain={[0,100]} icon={Battery} />
-            <SensorChart data={rawData} dataKey="temperature"   label="Température"         color={NAVY}  unit="°C" icon={Thermometer} />
-            <SensorChart data={rawData} dataKey="voltage"       label="Tension"            color={NAVY}  unit="V"  icon={Activity} />
-            <SensorChart data={rawData} dataKey="current"       label="Courant"            color={NAVY}  unit="A"  icon={Gauge} />
+            <SensorChart data={rawData} dataKey="power"         label="Puissance produite"  color={OR}    unit="W"  icon={Zap} />
+            <SensorChart data={rawData} dataKey="battery_level" label="Niveau batterie"     color={NAVY}  unit="%"  domain={[0,100]} icon={Battery} />
+            <SensorChart data={rawData} dataKey="temperature"   label="Température boîtier" color={NAVY}  unit="°C" icon={Thermometer} />
+            <SensorChart data={rawData} dataKey="voltage"       label="Tension"             color={NAVY}  unit="V"  icon={Activity} />
+            <SensorChart data={rawData} dataKey="current"       label="Courant"             color={NAVY}  unit="A"  icon={Gauge} />
           </>
         )}
       </div>

@@ -65,7 +65,7 @@ const Footer = () => {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
                 <Phone size={17} style={{ color: '#94A3B8' }} />
-                <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.9rem' }}>+227 90 91 91 03</span>
+                <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.9rem' }}>+227 90 91 91 03 & 88132822</span>
               </div>
             </div>
           </div>

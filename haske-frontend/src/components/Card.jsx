@@ -2,7 +2,8 @@ import React from 'react';
 
 // hero=true  -> carte mise en avant (valeur OR + filet or en haut). À utiliser SEULEMENT pour Puissance.
 // Sinon, valeur en bleu marine. status="normal"|"warning"|"danger" -> petit badge d'état (optionnel).
-function Card({ title, value, unit, icon: Icon, hero = false, status }) {
+// index -> ordre d'apparition (cascade du fondu). Optionnel.
+function Card({ title, value, unit, icon: Icon, hero = false, status, index = 0 }) {
   const ACCENT = '#C98A02';   // or lisible (texte)
   const MARINE = '#0B1F3A';
   const valueColor = hero ? ACCENT : MARINE;
@@ -23,7 +24,8 @@ function Card({ title, value, unit, icon: Icon, hero = false, status }) {
       border: '0.5px solid #E2E8F0',
       borderTop: topBorder,
       boxShadow: '0 1px 2px rgba(11,31,58,0.04)',
-      cursor: 'default'
+      cursor: 'default',
+      animationDelay: `${index * 0.07}s`
     }}>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
